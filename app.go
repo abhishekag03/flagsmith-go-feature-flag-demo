@@ -4,7 +4,6 @@ import (
 	"context"
 	"io/ioutil"
 	"net/http" // for returning standard defined api response codes
-	"time"
 
 	flagsmith "github.com/Flagsmith/flagsmith-go-client/v2"
 	"github.com/gin-gonic/gin" // to easily bootstrap api server
@@ -58,8 +57,8 @@ func main() {
 
 	// Initialise the Flagsmith client
 	client := flagsmith.NewClient(config["key"],
-		flagsmith.WithLocalEvaluation(), // for local evaluation
-		flagsmith.WithEnvironmentRefreshInterval(30*time.Second),
+		// flagsmith.WithLocalEvaluation(), // for local evaluation
+		// flagsmith.WithEnvironmentRefreshInterval(30*time.Second),
 		flagsmith.WithContext(ctx))
 
 	router := gin.Default()                      // creates a gin engine instance and returns it
@@ -73,14 +72,26 @@ func main() {
 		if err != nil {
 			return
 		}
+		minValStr, err := flags.GetFeatureValue("enable_new_books")
+		if err != nil {
+			return
+		}
+		minVal := minValStr.(float64)
 		// Add the new book to the list if feature flag is enabled
 		if isEnabled {
 			var newBook book
 			if err := c.BindJSON(&newBook); err != nil {
 				return
 			}
-			books = append(books, newBook)
-			c.IndentedJSON(http.StatusCreated, newBook)
+			if newBook.Price >= minVal { // check if price is greater than minimum threshold
+				books = append(books, newBook)
+				c.IndentedJSON(http.StatusCreated, newBook)
+			} else {
+				c.JSON(http.StatusNotAcceptable, gin.H{
+					"code":    http.StatusNotAcceptable,
+					"message": "sorry, book price does not meet the minimum threshold",
+				})
+			}
 		} else {
 			c.JSON(http.StatusMethodNotAllowed, gin.H{
 				"code":    http.StatusMethodNotAllowed,
