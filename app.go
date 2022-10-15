@@ -57,7 +57,6 @@ func main() {
 	}
 
 	// Initialise the Flagsmith client
-
 	client := flagsmith.NewClient(config["key"],
 		flagsmith.WithLocalEvaluation(), // for local evaluation
 		flagsmith.WithEnvironmentRefreshInterval(30*time.Second),
