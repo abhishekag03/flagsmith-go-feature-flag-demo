@@ -1,8 +1,14 @@
 package main
 
 import (
+	"context"
+	"io/ioutil"
 	"net/http" // for returning standard defined api response codes
+	"time"
+
+	flagsmith "github.com/Flagsmith/flagsmith-go-client/v2"
 	"github.com/gin-gonic/gin" // to easily bootstrap api server
+	"gopkg.in/yaml.v3"
 )
 
 // a book struct(class) which contains attributes describing a book
@@ -20,12 +26,43 @@ var books = []book{
 	{ID: "3", Title: "The Kite Runner", Author: "Khaled Hosseini", Price: 29.99},
 }
 
+func loadConfigMap() (map[string]string, error) {
+	yfile, err := ioutil.ReadFile("config.yml")
+
+	if err != nil {
+		return nil, err
+	}
+
+	config := make(map[string]string)
+
+	err = yaml.Unmarshal(yfile, &config)
+
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
 // getBooks responds with the list of all books as JSON.
 func getBooks(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, books) // IndentedJSON is like pretty-print which makes it more readable
 }
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	config, err := loadConfigMap()
+	if err != nil {
+		panic("could not read config")
+	}
+
+	// Initialise the Flagsmith client
+
+	client := flagsmith.NewClient(config["key"],
+		flagsmith.WithLocalEvaluation(), // for local evaluation
+		flagsmith.WithEnvironmentRefreshInterval(30*time.Second),
+		flagsmith.WithContext(ctx))
+
 	router := gin.Default()                      // creates a gin engine instance and returns it
 	router.GET("/books", getBooks)               // registering the function "getBooks" that will be called when /books endpoint is hit
 	router.POST("/books", func(c *gin.Context) { // defining the function to be executed when /books POST endpoint is hit
