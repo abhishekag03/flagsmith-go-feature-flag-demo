@@ -26,7 +26,16 @@ func getBooks(c *gin.Context) {
 }
 
 func main() {
-	router := gin.Default()        // creates a gin engine instance and returns it
-	router.GET("/books", getBooks) // registering the function "getBooks" that will be called when /books endpoint is hit
-	router.Run("localhost:8080")   // running the server on port 8080
+	router := gin.Default()                      // creates a gin engine instance and returns it
+	router.GET("/books", getBooks)               // registering the function "getBooks" that will be called when /books endpoint is hit
+	router.POST("/books", func(c *gin.Context) { // defining the function to be executed when /books POST endpoint is hit
+		var newBook book
+		if err := c.BindJSON(&newBook); err != nil {
+			return
+		}
+		books = append(books, newBook)
+		c.IndentedJSON(http.StatusCreated, newBook)
+	})
+	router.Run("localhost:8080") // running the server on port 8080
+
 }
