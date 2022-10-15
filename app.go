@@ -66,13 +66,30 @@ func main() {
 	router := gin.Default()                      // creates a gin engine instance and returns it
 	router.GET("/books", getBooks)               // registering the function "getBooks" that will be called when /books endpoint is hit
 	router.POST("/books", func(c *gin.Context) { // defining the function to be executed when /books POST endpoint is hit
-		var newBook book
-		if err := c.BindJSON(&newBook); err != nil {
+		flags, err := client.GetEnvironmentFlags()
+		if err != nil {
 			return
 		}
-		books = append(books, newBook)
-		c.IndentedJSON(http.StatusCreated, newBook)
+		isEnabled, err := flags.IsFeatureEnabled("enable_new_books")
+		if err != nil {
+			return
+		}
+		// Add the new book to the list if feature flag is enabled
+		if isEnabled {
+			var newBook book
+			if err := c.BindJSON(&newBook); err != nil {
+				return
+			}
+			books = append(books, newBook)
+			c.IndentedJSON(http.StatusCreated, newBook)
+		} else {
+			c.JSON(http.StatusMethodNotAllowed, gin.H{
+				"code":    http.StatusMethodNotAllowed,
+				"message": "sorry, please come back later",
+			})
+		}
 	})
+
 	router.Run("localhost:8080") // running the server on port 8080
 
 }
